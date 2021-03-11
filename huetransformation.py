@@ -12,18 +12,21 @@ def huerotaterange(hsvimage,rotation,huetarget,sustain,decaycoefficient):
     sensibility = np.zeros(hueimg.shape)
     
     RegionLeftHue = hueimg<huetarget-sustain
-    RegionCenterHue = np.logical_and(hueimg>huetarget-sustain, hueimg<huetarget+sustain)
+    RegionCenterHue = np.logical_and(hueimg>=huetarget-sustain, hueimg<=huetarget+sustain)
     RegionRightHue = hueimg>huetarget+sustain
-    sensibility=np.exp(-np.power((hueimg - 90)/decaycoefficient, 2.))
-    #sensibility[RegionLeftHue]=np.exp(-np.square((hueimg[RegionLeftHue]-huetarget+sustain)/decaycoefficient))
-    #sensibility[RegionLeftHue]=np.exp( -np.square((hueimg[RegionLeftHue]-huetarget+sustain)/decaycoefficient))
-    #print(sensibility[1:2,0:1000])
-    #sensibility[RegionCenterHue]=1  
-    #sensibility[RegionRightHue]=np.exp( -np.square((hueimg[RegionRightHue]-sustain-huetarget)/decaycoefficient))
+    sensibility[RegionLeftHue]=np.exp(-np.power((hueimg[RegionLeftHue] -huetarget+sustain)/decaycoefficient, 2.))
+    sensibility[RegionCenterHue]=1  
+    sensibility[RegionRightHue]=np.exp( -np.square((hueimg[RegionRightHue]-sustain-huetarget)/decaycoefficient))
    
+    secondhuetarget = huetarget+180(huetarget<90)-180(huetarget>90)
+    #sensibility[Imagerighthue+secondhuetarget]=sensibility[Imagerighthue]
+    #sensibility[Imagelefthue+secondhuetarget]=sensibility[Imagelefthue]
+    #sensibility[Imagecenter+secondhuetarget]=sensibility[Imagecenter]
+
+
     return np.array((hueimg+rotation*sensibility)%180,np.uint8)  #Processed according sensibility
 
-img = cv2.imread('huespace.jpg',cv2.IMREAD_COLOR)
+img = cv2.imread('frutas.jpg',cv2.IMREAD_COLOR)
 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 [height,width] = img[:,:,0].shape
@@ -43,7 +46,7 @@ for frame in range(FPS*seconds):
     nowrotation += rotationrate
     #print(nowrotation)
     hsvupdate = hsv.copy()
-    hsvupdate[:,:,0]=huerotaterange(hsv,nowrotation,90,20,10)
+    hsvupdate[:,:,0]=huerotaterange(hsv,nowrotation,25,15,20)
     #hsvupdate[:,:,0]=huerotateall(hsv,nowrotation)
     #hsvupdate[:,:,0]=(hsv[:,:,0]+nowrotation)%180
     framergb = cv2.cvtColor(hsvupdate, cv2.COLOR_HSV2BGR)
