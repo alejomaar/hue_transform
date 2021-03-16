@@ -27,7 +27,9 @@ def huerotaterange(hsvimage,rotation,huetarget,sustain,decaycoefficient):
     #sensibility[Imagecenter+secondhuetarget]=sensibility[Imagecenter]
 def maping(x,xmin,xmax,ymin,ymax):
     return (ymax-ymin)/(xmax-xmin)*(x-xmin)+ymin
-def huelinear(hsvimage,rotation,huetarget,sustain,decay):
+def huelinear(rgbimage,rotation,huetarget,sustain,decay):
+    #preparing image
+    hsvimage = cv2.cvtColor(rgbimage, cv2.COLOR_BGR2HSV)
     #Key Points 
     Di = huetarget-sustain-decay #Decay init
     Si=huetarget-sustain#Sustain init
@@ -35,8 +37,9 @@ def huelinear(hsvimage,rotation,huetarget,sustain,decay):
     Df = huetarget+sustain+decay
     #Image preparing 
     hueimg = hsvimage[:,:,0]
-    hueimg= hueimg.astype(np.float32)
-    Blend= np.zeros(hueimg.shape, dtype=np.float64)
+    hueimg = hueimg.astype(np.float32)
+    #hueimg= hueimg.astype(np.float32)
+    Blend= np.zeros(hueimg.shape, dtype=np.float32)
     #Take interest regions 
     RegionLeft = hueimg>=Di
     RegionCenterLeft = hueimg<=Si
@@ -47,7 +50,6 @@ def huelinear(hsvimage,rotation,huetarget,sustain,decay):
     Sustain =  np.logical_and(hueimg>=Si,hueimg<=Sf)
     DecayLeftSpace = np.logical_and(RegionLeft,RegionCenterLeft)
     DecayRightSpace = np.logical_and(RegionCenterRight,RegionRight)
-    Decay = np.logical_or(DecayLeftSpace,DecayRightSpace ) 
     #Created new image without smooth 
     hueImgNotSmooth = copy.deepcopy(hueimg)
     hueImgNotSmooth[AffectedSpace] = (hueImgNotSmooth[AffectedSpace]+rotation)%180
@@ -55,19 +57,18 @@ def huelinear(hsvimage,rotation,huetarget,sustain,decay):
     Blend[DecayLeftSpace] = (hueimg[DecayLeftSpace]-Di)/(Si-Di)
     Blend[DecayRightSpace] = (hueimg[DecayRightSpace]-Df)/(Sf-Df)
     Blend[Sustain] = 1
-    hueImgNotSmooth = hueImgNotSmooth*Blend+hueimg*(1-Blend)
-    #Blend = maping(Blend,0,1,0,90)
-    #hueImgSmooth = hueImgNotSmooth*Blend 
-    #Blend=Blend*90
-    #hueimgSmooth = hueimg*Blend+hueImgNotSmooth*(1-Blend)
-    #hueimgSmooth[Decay] = hueimgNotSmooth[Decay]*Blend[Decay]+hueimg[Decay]*(1-Blend[Decay])
-    #hueimgSmooth[decay]=0
-    
-    return np.array(hueImgNotSmooth,np.uint8) 
+   # hueImgNotSmooth = hueImgNotSmooth*Blend+hueimg*(1-Blend)
+    hsvimage[:,:,0] = hueImgNotSmooth
+    framergbNotSmooth = cv2.cvtColor(hsvimage, cv2.COLOR_HSV2BGR)
+    framergbSmooth = np.zeros(rgbimage.shape, dtype=np.float32)
+    framergbSmooth[:,:,0]=  framergbNotSmooth[:,:,0]*Blend+rgbimage[:,:,0]*(1-Blend)
+    framergbSmooth[:,:,1]=  framergbNotSmooth[:,:,1]*Blend+rgbimage[:,:,1]*(1-Blend)
+    framergbSmooth[:,:,2]=  framergbNotSmooth[:,:,2]*Blend+rgbimage[:,:,2]*(1-Blend)
+
+    return np.array(framergbSmooth,np.uint8) 
 
 
 img = cv2.imread('huespace.jpg',cv2.IMREAD_COLOR)
-hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 [height,width] = img[:,:,0].shape
 FPS = 12
@@ -84,12 +85,7 @@ video = VideoWriter('./hueTransformation2.avi', fourcc, float(FPS), (width, heig
 #print(hsv[:,:,0][1:10,1:1000])
 for frame in range(FPS*seconds):
     nowrotation += rotationrate
-    #print(nowrotation)
-    hsvupdate = hsv.copy()
-    hsvupdate[:,:,0]=huelinear(hsv,nowrotation,90,20,20)
-    #hsvupdate[:,:,0]=huerotateall(hsv,nowrotation)
-    #hsvupdate[:,:,0]=(hsv[:,:,0]+nowrotation)%180
-    framergb = cv2.cvtColor(hsvupdate, cv2.COLOR_HSV2BGR)
+    framergb=huelinear(img,nowrotation,55,20,20)
     video.write(framergb)
 
 video.release()
